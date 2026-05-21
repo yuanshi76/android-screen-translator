@@ -23,11 +23,7 @@ class SecureRepository @Inject constructor(@ApplicationContext val context: Cont
 
     val secureAssessmentInfoFlow: StateFlow<SecureAssessmentInfo?> get() = _secureAssessmentInfoFlow
 
-    private fun initApiKeyInfo() {
-        if (!ApiKeyInfo.apiKeyAvailable(context)) {
-            applyLocalAssessment()
-        }
-    }
+    private fun initApiKeyInfo() = Unit
 
     private fun securityAssessment() {
         val isSecureStoreSupported = SecureStore.isSupported()
@@ -52,6 +48,7 @@ class SecureRepository @Inject constructor(@ApplicationContext val context: Cont
     }
 
     private fun applyLocalAssessment() {
+        // In non-GMS builds, skip remote integrity verdicts and use local default assessment.
         _secureAssessmentInfoFlow.value = SecureAssessmentInfo()
     }
 

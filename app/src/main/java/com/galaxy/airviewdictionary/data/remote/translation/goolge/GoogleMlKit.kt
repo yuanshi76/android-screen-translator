@@ -18,7 +18,6 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Singleton
-import kotlin.coroutines.cancellation.CancellationException
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
@@ -166,7 +165,6 @@ class GoogleMlKit @Inject constructor() : TranslationKit() {
 }
 
 private suspend fun <T> Task<T>.awaitResult(): T = suspendCancellableCoroutine { continuation ->
-    continuation.invokeOnCancellation { }
     addOnCompleteListener { task ->
         if (!continuation.isActive) return@addOnCompleteListener
         if (task.isSuccessful) {

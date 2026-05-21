@@ -445,8 +445,8 @@ class SettingsActivity : AVDActivity() {
             DialogView.INSTANCE.cast(
                 applicationContext = applicationContext,
                 icon = Icons.Outlined.Movie,
-                dialogTitle = getString(R.string.message_free_trial_ends),
-                dialogText = getString(R.string.message_free_trial_ends_detail),
+                dialogTitle = getString(R.string.help_text_get_premium),
+                dialogText = getString(R.string.premium_view_message),
                 onConfirm = {
                     intent.removeExtra(EXTRA_PURCHASE_INDUCEMENT)
                     finish()
