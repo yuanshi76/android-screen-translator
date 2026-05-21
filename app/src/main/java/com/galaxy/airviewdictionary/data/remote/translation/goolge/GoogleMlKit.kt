@@ -165,6 +165,8 @@ class GoogleMlKit @Inject constructor() : TranslationKit() {
 }
 
 private suspend fun <T> Task<T>.awaitResult(): T = suspendCancellableCoroutine { continuation ->
+    // Task API does not expose listener removal; this keeps cancellation explicit on coroutine side.
+    continuation.invokeOnCancellation { }
     addOnCompleteListener { task ->
         if (!continuation.isActive) return@addOnCompleteListener
         if (task.isSuccessful) {

@@ -445,6 +445,7 @@ class SettingsActivity : AVDActivity() {
             DialogView.INSTANCE.cast(
                 applicationContext = applicationContext,
                 icon = Icons.Outlined.Movie,
+                // Ads are removed in non-GMS builds, so this flow now promotes premium purchase directly.
                 dialogTitle = getString(R.string.help_text_get_premium),
                 dialogText = getString(R.string.premium_view_message),
                 onConfirm = {

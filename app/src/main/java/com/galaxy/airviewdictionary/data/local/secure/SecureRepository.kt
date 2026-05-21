@@ -48,7 +48,7 @@ class SecureRepository @Inject constructor(@ApplicationContext val context: Cont
     }
 
     private fun applyLocalAssessment() {
-        // In non-GMS builds, skip remote integrity verdicts and use local default assessment.
+        // In non-GMS builds, skip remote integrity verdicts and use local default assessment (all fields null/unevaluated).
         _secureAssessmentInfoFlow.value = SecureAssessmentInfo()
     }
 

@@ -19,6 +19,7 @@ class RemoteConfigValue(private val raw: String) {
         0.0
     }
     fun asBoolean(): Boolean = raw.equals("true", ignoreCase = true)
+    fun asByteArray(): ByteArray = raw.toByteArray()
 }
 
 @Singleton
