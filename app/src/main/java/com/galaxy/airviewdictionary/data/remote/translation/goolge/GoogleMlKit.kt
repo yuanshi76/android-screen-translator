@@ -14,10 +14,12 @@ import com.google.mlkit.nl.translate.TranslateRemoteModel
 import com.google.mlkit.nl.translate.Translation
 import com.google.mlkit.nl.translate.Translator
 import com.google.mlkit.nl.translate.TranslatorOptions
-import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.suspendCancellableCoroutine
 import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 
 
 /**
@@ -117,8 +119,8 @@ class GoogleMlKit @Inject constructor() : TranslationKit() {
         val translator = translators[options]
 
         return try {
-            translator.downloadModelIfNeededAsync().await()
-            val translatedText = translator.translateAsync(sourceText).await()
+            translator.downloadModelIfNeededAsync().awaitResult()
+            val translatedText = translator.translateAsync(sourceText).awaitResult()
 
             TranslationResponse.Success(
                 Transaction(
@@ -159,5 +161,13 @@ class GoogleMlKit @Inject constructor() : TranslationKit() {
 
     fun close() {
         translators.evictAll()
+    }
+}
+
+private suspend fun <T> Task<T>.awaitResult(): T = suspendCancellableCoroutine { continuation ->
+    addOnSuccessListener { result ->
+        continuation.resume(result)
+    }.addOnFailureListener { throwable ->
+        continuation.resumeWithException(throwable)
     }
 }
