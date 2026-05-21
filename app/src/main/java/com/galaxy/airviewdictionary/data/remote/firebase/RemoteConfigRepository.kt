@@ -11,11 +11,11 @@ import javax.inject.Singleton
 class RemoteConfigValue(private val raw: String) {
     fun asString(): String = raw
     fun asLong(): Long = raw.toLongOrNull() ?: run {
-        Timber.w("RemoteConfigValue.asLong parse failed for value: %s", raw)
+        Timber.w("RemoteConfigValue.asLong parse failed for value: $raw")
         0L
     }
     fun asDouble(): Double = raw.toDoubleOrNull() ?: run {
-        Timber.w("RemoteConfigValue.asDouble parse failed for value: %s", raw)
+        Timber.w("RemoteConfigValue.asDouble parse failed for value: $raw")
         0.0
     }
     fun asBoolean(): Boolean = raw.equals("true", ignoreCase = true)

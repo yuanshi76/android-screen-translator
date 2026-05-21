@@ -172,7 +172,7 @@ private suspend fun <T> Task<T>.awaitResult(): T = suspendCancellableCoroutine {
         if (task.isSuccessful) {
             continuation.resume(task.result)
         } else {
-            continuation.resumeWithException(task.exception ?: CancellationException("Task failed"))
+            continuation.resumeWithException(task.exception ?: CancellationException("GoogleMlKit task failed"))
         }
     }
 }
