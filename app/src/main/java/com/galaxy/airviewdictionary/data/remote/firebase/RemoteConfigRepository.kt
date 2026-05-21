@@ -10,6 +10,7 @@ import javax.inject.Singleton
 class RemoteConfigValue(private val raw: String) {
     fun asString(): String = raw
     fun asLong(): Long = raw.toLongOrNull() ?: 0L
+    fun asDouble(): Double = raw.toDoubleOrNull() ?: 0.0
     fun asBoolean(): Boolean = raw.equals("true", ignoreCase = true)
 }
 

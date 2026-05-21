@@ -25,7 +25,7 @@ class SecureRepository @Inject constructor(@ApplicationContext val context: Cont
 
     private fun initApiKeyInfo() {
         if (!ApiKeyInfo.apiKeyAvailable(context)) {
-            applyTrustedAssessment()
+            applyLocalAssessment()
         }
     }
 
@@ -46,19 +46,13 @@ class SecureRepository @Inject constructor(@ApplicationContext val context: Cont
                     verdictAppRecognition = VerdictAppRecognition.UNEVALUATED,
                 )
             } else {
-                applyTrustedAssessment()
+                applyLocalAssessment()
             }
         }
     }
 
-    private fun applyTrustedAssessment() {
-        _secureAssessmentInfoFlow.value = SecureAssessmentInfo(
-            verdictAppRecognition = VerdictAppRecognition.PLAY_RECOGNIZED,
-            verdictDeviceRecognition = VerdictDeviceRecognition.MEETS_DEVICE_INTEGRITY,
-            deviceActivityLevel = DeviceActivityLevel.LEVEL_1,
-            verdictAppLicensing = VerdictAppLicensing.LICENSED,
-            verdictPlayProtect = VerdictPlayProtect.NO_ISSUES,
-        )
+    private fun applyLocalAssessment() {
+        _secureAssessmentInfoFlow.value = SecureAssessmentInfo()
     }
 
     fun playIntegrity(
@@ -69,7 +63,7 @@ class SecureRepository @Inject constructor(@ApplicationContext val context: Cont
         apiKeyVersionChatgpt: Int = 1,
         retry: Boolean = false
     ) {
-        applyTrustedAssessment()
+        applyLocalAssessment()
     }
 
     fun increaseTrialCount(): Int {
