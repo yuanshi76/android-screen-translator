@@ -143,22 +143,6 @@ import com.galaxy.airviewdictionary.ui.screen.overlay.targethandle.TargetHandleV
 import com.galaxy.airviewdictionary.ui.screen.overlay.voicelist.VoiceListView
 import com.galaxy.airviewdictionary.ui.screen.permissions.ScreenCapturePermissionRequesterActivity
 import com.galaxy.airviewdictionary.ui.theme.ScreenTranslatorTheme
-import com.google.android.gms.ads.AdError
-import com.google.android.gms.ads.AdRequest
-import com.google.android.gms.ads.FullScreenContentCallback
-import com.google.android.gms.ads.LoadAdError
-import com.google.android.gms.ads.MobileAds
-import com.google.android.gms.ads.OnUserEarnedRewardListener
-import com.google.android.gms.ads.RequestConfiguration
-import com.google.android.gms.ads.rewarded.RewardedAd
-import com.google.android.gms.ads.rewarded.RewardedAdLoadCallback
-import com.google.android.play.core.review.ReviewException
-import com.google.android.play.core.review.ReviewManager
-import com.google.android.play.core.review.ReviewManagerFactory
-import com.google.android.play.core.review.testing.FakeReviewManager
-import com.google.firebase.Firebase
-import com.google.firebase.analytics.analytics
-import com.google.firebase.remoteconfig.FirebaseRemoteConfig
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -170,7 +154,6 @@ import kotlinx.coroutines.launch
 import timber.log.Timber
 import java.math.BigDecimal
 import java.math.RoundingMode
-import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.math.ceil
 import kotlin.math.round
 import kotlin.math.roundToInt
@@ -220,19 +203,12 @@ class SettingsActivity : AVDActivity() {
 
 //    private val snackMessageFlow = MutableStateFlow("")
 
-    private val isMobileAdsInitializeCalled = AtomicBoolean(false)
-    private lateinit var googleMobileAdsConsentManager: GoogleMobileAdsConsentManager
-    private var isRewardedAdLoading = false
-    private var rewardedAd: RewardedAd? = null
-
     @OptIn(ExperimentalSharedTransitionApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
 
         ScreenInfoHolder.collectAndStoreScreenInfo(this)
-
-        initGoogleMobileAdsConsentManager()
 
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
             val policy = ThreadPolicy.Builder().permitAll().build()
@@ -461,165 +437,26 @@ class SettingsActivity : AVDActivity() {
     //                                                                                            //
     ////////////////////////////////////////////////////////////////////////////////////////////////
 
-    private fun initGoogleMobileAdsConsentManager() {
-        Timber.tag(TAG).i("Admob initGoogleMobileAdsConsentManager Google Mobile Ads SDK Version: ${MobileAds.getVersion()}")
-        googleMobileAdsConsentManager = GoogleMobileAdsConsentManager.getInstance(this)
-        googleMobileAdsConsentManager.gatherConsent(this) { error ->
-            if (error != null) {
-                // Consent not obtained in current session.
-                Timber.tag(TAG).d("${error.errorCode}: ${error.message}")
-            }
+    private fun loadRewardedAd() {
+        val purchaseInducement = intent.getBooleanExtra(EXTRA_PURCHASE_INDUCEMENT, false)
+        if (!purchaseInducement) return
 
-            if (googleMobileAdsConsentManager.canRequestAds) {
-                initializeMobileAdsSdk()
-            }
-
-            if (googleMobileAdsConsentManager.isPrivacyOptionsRequired) {
-                // Regenerate the options menu to include a privacy setting.
-                invalidateOptionsMenu()
-            }
-        }
-
-        // This sample attempts to load ads using consent obtained in the previous session.
-        if (googleMobileAdsConsentManager.canRequestAds) {
-            initializeMobileAdsSdk()
-        }
-    }
-
-    private fun initializeMobileAdsSdk() {
-        Timber.tag(TAG).i("Admob initializeMobileAdsSdk isMobileAdsInitializeCalled: ${isMobileAdsInitializeCalled.get()}")
-        if (isMobileAdsInitializeCalled.getAndSet(true)) {
-            return
-        }
-
-        // Set your test devices.
-        if (BuildConfig.DEBUG) {
-            MobileAds.setRequestConfiguration(
-                RequestConfiguration.Builder().setTestDeviceIds(listOf("BA6732E32C6CA0D01FB929ECC2FDA19F")).build()
+        CoroutineScope(Dispatchers.Main).launch {
+            DialogView.INSTANCE.cast(
+                applicationContext = applicationContext,
+                icon = Icons.Outlined.Movie,
+                // Ads are removed in non-GMS builds, so this flow now promotes premium purchase directly.
+                dialogTitle = getString(R.string.help_text_get_premium),
+                dialogText = getString(R.string.premium_view_message),
+                onConfirm = {
+                    intent.removeExtra(EXTRA_PURCHASE_INDUCEMENT)
+                    finish()
+                },
+                onDismiss = {
+                    DialogView.INSTANCE.clear()
+                }
             )
         }
-
-        CoroutineScope(Dispatchers.IO).launch {
-            // Initialize the Google Mobile Ads SDK on a background thread.
-            MobileAds.initialize(this@SettingsActivity) {}
-            runOnUiThread {
-                // Load an ad on the main thread.
-                loadRewardedAd()
-            }
-        }
-    }
-
-    private fun loadRewardedAd() {
-        Timber.tag(TAG).i("Admob loadRewardedAd googleMobileAdsConsentManager.canRequestAds: ${googleMobileAdsConsentManager.canRequestAds}")
-        if (!googleMobileAdsConsentManager.canRequestAds) {
-            return
-        }
-
-        val adUnitId =
-            if (BuildConfig.DEBUG) {
-                "" // TODO: Set your AdMob test ad unit ID
-            } else {
-                FirebaseRemoteConfig.getInstance().getString(RemoteConfigRepository.AD_UNIT_ID)
-            }
-        Timber.tag(TAG).i("rewardedAd $rewardedAd isRewardedAdLoading $isRewardedAdLoading adUnitId $adUnitId")
-        if (rewardedAd == null) {
-            if (!isRewardedAdLoading) {
-                isRewardedAdLoading = true
-                var adRequest = AdRequest.Builder().build()
-
-                RewardedAd.load(
-                    this,
-                    adUnitId,
-                    adRequest,
-                    object : RewardedAdLoadCallback() {
-                        override fun onAdFailedToLoad(adError: LoadAdError) {
-                            Timber.tag(TAG).d(adError.message)
-                            rewardedAd = null
-                            isRewardedAdLoading = false
-                        }
-
-                        override fun onAdLoaded(ad: RewardedAd) {
-                            Timber.tag(TAG).d("Ad was loaded.")
-                            rewardedAd = ad
-                            isRewardedAdLoading = false
-                            loadRewardedAd()
-                        }
-                    },
-                )
-            }
-        } else {
-            val purchaseInducement = intent.getBooleanExtra(EXTRA_PURCHASE_INDUCEMENT, false)
-            Timber.tag(TAG).d("Admob purchaseInducement $purchaseInducement")
-            if (purchaseInducement) {
-                CoroutineScope(Dispatchers.Main).launch {
-                    DialogView.INSTANCE.cast(
-                        applicationContext = applicationContext,
-                        icon = Icons.Outlined.Movie,
-                        dialogTitle = getString(R.string.message_free_trial_ends),
-                        dialogText = getString(R.string.message_free_trial_ends_detail),
-                        onConfirm = {
-                            intent.removeExtra(EXTRA_PURCHASE_INDUCEMENT)
-                            showRewardedVideo()
-                        },
-                        onDismiss = {
-                            DialogView.INSTANCE.clear()
-                        }
-                    )
-                }
-            }
-        }
-    }
-
-    private fun showRewardedVideo() {
-        Timber.tag(TAG).d("Admob showRewardedVideo rewardedAd $rewardedAd")
-        rewardedAd?.fullScreenContentCallback =
-            object : FullScreenContentCallback() {
-                override fun onAdDismissedFullScreenContent() {
-                    Timber.tag(TAG).d("Ad was dismissed.")
-                    // Don't forget to set the ad reference to null so you don't show the ad a second time.
-                    rewardedAd = null
-                    if (googleMobileAdsConsentManager.canRequestAds) {
-                        loadRewardedAd()
-                    }
-                }
-
-                override fun onAdFailedToShowFullScreenContent(adError: AdError) {
-                    Timber.tag(TAG).d("Ad failed to show.")
-                    // Don't forget to set the ad reference to null so you don't show the ad a second time.
-                    rewardedAd = null
-                }
-
-                override fun onAdShowedFullScreenContent() {
-                    Timber.tag(TAG).d("Ad showed fullscreen content.")
-                    // Called when ad is dismissed.
-                }
-            }
-
-        rewardedAd?.show(
-            this,
-            OnUserEarnedRewardListener { rewardItem ->
-                // Handle the reward.
-                val rewardAmount = rewardItem.amount
-                val rewardType = rewardItem.type
-                TrialLimitInfo.addTrialTime(applicationContext, rewardItem.amount)
-                Timber.tag(TAG).i("User earned the reward. $rewardAmount $rewardType")
-
-                val title = getString(R.string.message_ad_reward, rewardItem.amount)
-                val message = getString(R.string.message_ad_reward_detail, rewardItem.amount)
-
-                CoroutineScope(Dispatchers.Main).launch {
-                    DialogView.INSTANCE.cast(
-                        applicationContext = applicationContext,
-                        icon = Icons.Outlined.CardGiftcard,
-                        dialogTitle = title,
-                        dialogText = message,
-                        onConfirm = {
-                            finish()
-                        }
-                    )
-                }
-            },
-        )
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -900,7 +737,6 @@ class SettingsActivity : AVDActivity() {
                             )
 
                             coroutineScope.launch {
-                                Firebase.analytics.setAnalyticsCollectionEnabled(false)
                                 delay(200L)
                                 finish()
 //                            moveTaskToBack(true)
@@ -1953,13 +1789,6 @@ class SettingsActivity : AVDActivity() {
 
     private fun appReview() {
         Timber.tag(TAG).d("appReview()")
-        val manager =
-            if (BuildConfig.DEBUG) {
-                FakeReviewManager(applicationContext)
-            } else {
-                ReviewManagerFactory.create(applicationContext)
-            }
-
         lifecycleScope.launch {
             val trialCount = viewModel.secureRepository.getTrialCount()
             Timber.tag(TAG).d("appReview() trialCount $trialCount")
@@ -1975,36 +1804,11 @@ class SettingsActivity : AVDActivity() {
                         && !SliderDialogView.INSTANCE.isRunning.get()
                         && !VoiceListView.INSTANCE.isRunning.get()
                     ) {
-                        Timber.tag(TAG).d("All states are false. Proceeding with review flow.")
-                        startReviewFlow(manager)  // 리뷰 플로우 시작
+                        Timber.tag(TAG).d("All states are false. Marking review flow as done.")
+                        viewModel.updateIsReviewDone()
                         break  // 반복 종료
                     }
                 }
-            }
-        }
-    }
-
-    private fun startReviewFlow(manager: ReviewManager) {
-        MenuBarView.INSTANCE.clear()
-        TargetHandleView.INSTANCE.clear()
-
-        val request = manager.requestReviewFlow()
-//        Timber.tag(TAG).d("appReview() startReviewFlow request $request")
-        request.addOnCompleteListener { task ->
-//            Timber.tag(TAG).d("appReview() startReviewFlow task ${task.isSuccessful}")
-            if (task.isSuccessful) {
-                val reviewInfo = task.result
-                val flow = manager.launchReviewFlow(this, reviewInfo)
-                flow.addOnCompleteListener { _ ->
-                    viewModel.updateIsReviewDone()
-                }
-            } else {
-                val reviewErrorCode = (task.exception as ReviewException).errorCode
-                Timber.tag(TAG).d("appReview() startReviewFlow reviewErrorCode $reviewErrorCode")
-            }
-            lifecycleScope.launch {
-                MenuBarView.INSTANCE.cast(applicationContext)
-                TargetHandleView.INSTANCE.cast(applicationContext)
             }
         }
     }
