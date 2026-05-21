@@ -4,13 +4,20 @@ import android.content.Context
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Singleton
 
 class RemoteConfigValue(private val raw: String) {
     fun asString(): String = raw
-    fun asLong(): Long = raw.toLongOrNull() ?: 0L
-    fun asDouble(): Double = raw.toDoubleOrNull() ?: 0.0
+    fun asLong(): Long = raw.toLongOrNull() ?: run {
+        Timber.w("RemoteConfigValue.asLong parse failed for value: %s", raw)
+        0L
+    }
+    fun asDouble(): Double = raw.toDoubleOrNull() ?: run {
+        Timber.w("RemoteConfigValue.asDouble parse failed for value: %s", raw)
+        0.0
+    }
     fun asBoolean(): Boolean = raw.equals("true", ignoreCase = true)
 }
 

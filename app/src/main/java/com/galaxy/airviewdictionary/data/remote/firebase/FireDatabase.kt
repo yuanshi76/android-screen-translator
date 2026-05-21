@@ -14,7 +14,7 @@ import java.util.Date
 import java.util.Locale
 
 /**
- * GMS/Firebase 미사용 빌드에서는 원격 보고를 비활성화한다.
+ * Remote reporting is disabled in builds without GMS/Firebase.
  */
 object FireDatabase {
 

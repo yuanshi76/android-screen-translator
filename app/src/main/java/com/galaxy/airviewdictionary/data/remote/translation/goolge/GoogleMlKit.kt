@@ -166,6 +166,7 @@ class GoogleMlKit @Inject constructor() : TranslationKit() {
 }
 
 private suspend fun <T> Task<T>.awaitResult(): T = suspendCancellableCoroutine { continuation ->
+    continuation.invokeOnCancellation { }
     addOnCompleteListener { task ->
         if (!continuation.isActive) return@addOnCompleteListener
         if (task.isSuccessful) {
